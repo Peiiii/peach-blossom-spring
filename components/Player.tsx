@@ -43,7 +43,8 @@ export const Player = () => {
     // --- A. MOVEMENT (WASD) ---
     // Calculate raw input vector
     const frontInput = Number(backward) - Number(forward);
-    const sideInput = Number(left) - Number(right);
+    // Fix: Swapped left and right to correct direction (A should be left/-X, D should be right/+X)
+    const sideInput = Number(right) - Number(left);
     
     const moveVector = new THREE.Vector3(sideInput, 0, frontInput);
     const currentSpeed = flyMode ? FLY_SPEED : WALK_SPEED;
