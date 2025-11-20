@@ -131,6 +131,7 @@ export const Player = () => {
             ref={controlsRef}
             enablePan={false}
             enableZoom={true}
+            enableDamping={false}
             maxPolarAngle={flyMode ? Math.PI : Math.PI / 2 - 0.05} // Allow looking down freely when flying
             minDistance={5}
             maxDistance={30}
