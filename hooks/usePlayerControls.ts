@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 
 export const usePlayerControls = () => {
@@ -12,7 +13,7 @@ export const usePlayerControls = () => {
   });
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: any) => {
       // Toggle Fly Mode on 'F'
       if (e.code === 'KeyF' && !e.repeat) {
         setMovement((m) => ({ ...m, flyMode: !m.flyMode }));
@@ -46,7 +47,7 @@ export const usePlayerControls = () => {
       }
     };
 
-    const handleKeyUp = (e: KeyboardEvent) => {
+    const handleKeyUp = (e: any) => {
       switch (e.code) {
         case 'KeyW':
         case 'ArrowUp':
@@ -74,12 +75,12 @@ export const usePlayerControls = () => {
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('keyup', handleKeyUp);
+    (window as any).document.addEventListener('keydown', handleKeyDown);
+    (window as any).document.addEventListener('keyup', handleKeyUp);
 
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('keyup', handleKeyUp);
+      (window as any).document.removeEventListener('keydown', handleKeyDown);
+      (window as any).document.removeEventListener('keyup', handleKeyUp);
     };
   }, []);
 

@@ -43,7 +43,7 @@ export const Player = () => {
     // --- A. MOVEMENT (WASD) ---
     // Calculate raw input vector
     const frontInput = Number(backward) - Number(forward);
-    // Fix: Swapped to Number(left) - Number(right) to correct direction logic
+    // Fix: Corrected direction logic (Left - Right) based on user feedback
     const sideInput = Number(left) - Number(right);
     
     const moveVector = new THREE.Vector3(sideInput, 0, frontInput);

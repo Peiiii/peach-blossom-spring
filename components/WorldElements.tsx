@@ -17,7 +17,7 @@ const generateCurve = (scale: number, seed: number) => {
     return new THREE.CatmullRomCurve3(points);
 };
 
-export const OrganicEnvironment = React.memo(() => {
+export const OrganicEnvironment = React.memo(({ isNight }: { isNight: boolean }) => {
     const riverCurve = useMemo(() => generateCurve(1, 0), []);
     const roadCurve = useMemo(() => generateCurve(1, 2), []);
 
@@ -32,12 +32,14 @@ export const OrganicEnvironment = React.memo(() => {
         <group>
             <PhysicsGround />
             <GalaxyWaterfall />
-            <mesh geometry={riverGeo} position={[0, -0.5, 0]} receiveShadow>
+            {/* Flattened River: Scale Y to near-zero to make it a flat ribbon on the surface */}
+            <mesh geometry={riverGeo} position={[0, 0.02, 0]} scale={[1, 0.02, 1]} receiveShadow>
                 <meshStandardMaterial color={COLORS.WATER} roughness={0.1} metalness={0.1} opacity={0.9} transparent />
             </mesh>
-            <mesh geometry={roadGeo} position={[0, 0.02, 0]} receiveShadow>
+            <mesh geometry={roadGeo} position={[0, 0.05, 0]} scale={[1, 0.05, 1]} receiveShadow>
                 <meshStandardMaterial color={COLORS.DIRT} roughness={1} />
             </mesh>
+            <LanternSystem curve={roadCurve} isNight={isNight} />
             <DistantMountains />
             {/* Reduced count for performance */}
             <VegetationLayer count={60} minRange={20} maxRange={90} />
@@ -45,6 +47,52 @@ export const OrganicEnvironment = React.memo(() => {
         </group>
     );
 });
+
+// New Lantern System
+const LanternSystem = ({ curve, isNight }: { curve: THREE.CatmullRomCurve3, isNight: boolean }) => {
+    const points = useMemo(() => {
+        // Shift points to match road offset (x+5, z+5)
+        return curve.getPoints(20).map(p => new THREE.Vector3(p.x + 5, 0, p.z + 5));
+    }, [curve]);
+
+    return (
+        <group>
+            {points.map((pt, i) => {
+                if (i % 3 !== 0) return null; // Space them out
+                // Alternate sides
+                const offset = i % 2 === 0 ? 2.5 : -2.5;
+                return <StreetLamp key={i} position={[pt.x + offset, 0, pt.z + offset]} isNight={isNight} />
+            })}
+        </group>
+    )
+}
+
+const StreetLamp = ({ position, isNight }: { position: [number, number, number], isNight: boolean }) => {
+    return (
+        <group position={position}>
+             {/* Pole */}
+             <mesh position={[0, 1.5, 0]} castShadow>
+                <cylinderGeometry args={[0.1, 0.15, 3]} />
+                <meshStandardMaterial color="#4E342E" />
+             </mesh>
+             {/* Crossbar */}
+             <mesh position={[0, 2.8, 0]} rotation={[0, 0, 0]}>
+                <boxGeometry args={[0.8, 0.1, 0.1]} />
+                <meshStandardMaterial color="#4E342E" />
+             </mesh>
+             {/* Lantern */}
+             <mesh position={[0.3, 2.4, 0]}>
+                <boxGeometry args={[0.3, 0.5, 0.3]} />
+                <meshStandardMaterial 
+                    color={isNight ? "#FFF9C4" : "#F5F5F5"} 
+                    emissive={isNight ? "#FFD54F" : "#000000"}
+                    emissiveIntensity={isNight ? 1.5 : 0}
+                />
+                {isNight && <pointLight distance={15} decay={2} intensity={1.5} color="#FFD54F" castShadow />}
+             </mesh>
+        </group>
+    )
+}
 
 const GalaxyWaterfall = () => {
     const textureRef = useRef<THREE.Texture>(null);
@@ -68,7 +116,7 @@ const GalaxyWaterfall = () => {
     });
 
     const flowTexture = useMemo(() => {
-        const canvas = document.createElement('canvas');
+        const canvas = (window as any).document.createElement('canvas');
         canvas.width = 64;
         canvas.height = 64;
         const ctx = canvas.getContext('2d');
@@ -251,7 +299,6 @@ const VegetationLayer = React.memo(({ count, minRange, maxRange }: { count: numb
     )
 });
 
-// ... (Tree components unchanged, assume they are good) ...
 const PeachTree: React.FC<{ position: [number, number, number], scale?: number }> = ({ position, scale = 1 }) => {
     const leaves = useMemo(() => {
         const count = 15;  // Reduced count
