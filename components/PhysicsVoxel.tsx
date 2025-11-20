@@ -11,19 +11,19 @@ interface PhysicsVoxelProps {
   appState: AppState;
 }
 
-export const PhysicsVoxel: React.FC<PhysicsVoxelProps> = ({ data, targetData, appState }) => {
+const PhysicsVoxelComponent: React.FC<PhysicsVoxelProps> = ({ data, targetData, appState }) => {
   // Determine initial position based on whether we are generating fresh or using existing
   const initialPos: [number, number, number] = [data.x, data.y, data.z];
 
   // Cannon physics hook
-  // Note: We control 'type' via mass (0 = static/kinematic behavior, >0 = dynamic)
-  // Scale is now BLOCK_SCALE (0.5)
   const [ref, api] = useBox(() => ({
     mass: 1, 
     position: initialPos,
     args: [BLOCK_SCALE, BLOCK_SCALE, BLOCK_SCALE],
     material: { friction: 0.5, restitution: 0.3 },
-    sleepSpeedLimit: 0.1, // Allow aggressive sleeping for performance
+    allowSleep: true, // IMPORTANT: Allow physics body to sleep when not moving
+    sleepSpeedLimit: 0.5, // More aggressive sleep threshold
+    sleepTimeLimit: 0.5,
   }));
 
   const [isRebuildLocked, setRebuildLocked] = useState(false);
@@ -39,7 +39,7 @@ export const PhysicsVoxel: React.FC<PhysicsVoxelProps> = ({ data, targetData, ap
       setRebuildLocked(false);
       
       // Add a random explosion impulse to scatter them
-      const force = 3; // Reduced force for smaller blocks
+      const force = 5; 
       api.applyImpulse(
         [(Math.random() - 0.5) * force, Math.random() * force, (Math.random() - 0.5) * force],
         [0, 0, 0]
@@ -47,7 +47,6 @@ export const PhysicsVoxel: React.FC<PhysicsVoxelProps> = ({ data, targetData, ap
     } else if (appState === AppState.REBUILDING) {
       // Disable gravity/physics for rebuilding
       api.mass.set(0);
-      // Stop moving
       api.velocity.set(0, 0, 0);
       api.angularVelocity.set(0, 0, 0);
     } else if (appState === AppState.IDLE) {
@@ -55,6 +54,7 @@ export const PhysicsVoxel: React.FC<PhysicsVoxelProps> = ({ data, targetData, ap
        api.mass.set(0);
        api.velocity.set(0,0,0);
        api.angularVelocity.set(0, 0, 0);
+       api.sleep(); // Force sleep
        
        // If we just finished rebuilding, snap to target grid exactly
        if (targetData) {
@@ -76,7 +76,7 @@ export const PhysicsVoxel: React.FC<PhysicsVoxelProps> = ({ data, targetData, ap
       const target = new THREE.Vector3(targetData.x, targetData.y, targetData.z);
       
       // Lerp factor
-      const alpha = 0.05;
+      const alpha = 0.08;
       currentPos.lerp(target, alpha);
       
       // Drive position manually (teleport) since mass is 0
@@ -105,3 +105,16 @@ export const PhysicsVoxel: React.FC<PhysicsVoxelProps> = ({ data, targetData, ap
     </mesh>
   );
 };
+
+// Optimization: Memoize to prevent re-renders of 1000s of blocks when parent state changes unrelated to this specific block
+export const PhysicsVoxel = React.memo(PhysicsVoxelComponent, (prev, next) => {
+    return (
+        prev.data.id === next.data.id &&
+        prev.data.x === next.data.x &&
+        prev.data.y === next.data.y &&
+        prev.data.z === next.data.z &&
+        prev.data.color === next.data.color &&
+        prev.appState === next.appState && 
+        prev.targetData === next.targetData
+    );
+});

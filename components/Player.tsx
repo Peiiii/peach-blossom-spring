@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { useSphere } from '@react-three/cannon';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -131,10 +132,12 @@ export const Player = () => {
             ref={controlsRef}
             enablePan={false}
             enableZoom={true}
-            enableDamping={false}
-            maxPolarAngle={flyMode ? Math.PI : Math.PI / 2 - 0.05} // Allow looking down freely when flying
-            minDistance={5}
-            maxDistance={30}
+            enableDamping={true} 
+            dampingFactor={0.1} 
+            rotateSpeed={0.3} // Reduced rotation speed for smoother feel
+            maxPolarAngle={flyMode ? Math.PI : Math.PI / 2 - 0.05}
+            minDistance={2} 
+            maxDistance={5} // EXTREMELY REDUCED: Keeps camera very tight to player
         />
 
         {/* The Visual Character */}

@@ -1,14 +1,12 @@
 
 import React, { useRef, useMemo, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { usePlane } from '@react-three/cannon';
 import { COLORS } from '../constants';
 import { Instance, Instances } from '@react-three/drei';
 
 // --- Helper Constants ---
-const DEG2RAD = Math.PI / 180;
-
 const generateCurve = (scale: number, seed: number) => {
     const points = [];
     for (let i = 0; i <= 10; i++) {
@@ -19,7 +17,7 @@ const generateCurve = (scale: number, seed: number) => {
     return new THREE.CatmullRomCurve3(points);
 };
 
-export const OrganicEnvironment = () => {
+export const OrganicEnvironment = React.memo(() => {
     const riverCurve = useMemo(() => generateCurve(1, 0), []);
     const roadCurve = useMemo(() => generateCurve(1, 2), []);
 
@@ -41,11 +39,12 @@ export const OrganicEnvironment = () => {
                 <meshStandardMaterial color={COLORS.DIRT} roughness={1} />
             </mesh>
             <DistantMountains />
-            <VegetationLayer count={120} minRange={20} maxRange={90} />
+            {/* Reduced count for performance */}
+            <VegetationLayer count={60} minRange={20} maxRange={90} />
             <FarmFields />
         </group>
     );
-};
+});
 
 const GalaxyWaterfall = () => {
     const textureRef = useRef<THREE.Texture>(null);
@@ -116,22 +115,24 @@ const GalaxyWaterfall = () => {
                 />
             </mesh>
 
-            <Instances range={100}>
+            {/* Optimized: Use Instances correctly with Instance component */}
+            <Instances range={30}>
                 <boxGeometry args={[0.4, 0.4, 0.4]} />
                 <meshStandardMaterial color="white" emissive="white" emissiveIntensity={3} />
-                {[...Array(100)].map((_, i) => (
-                    <FallingStar key={i} curve={waterfallCurve} offset={i * 0.01} />
+                {[...Array(30)].map((_, i) => (
+                    <FallingStarInstance key={i} curve={waterfallCurve} offset={i * 0.03} />
                 ))}
             </Instances>
         </group>
     );
 };
 
-const FallingStar: React.FC<{ curve: THREE.CatmullRomCurve3, offset: number }> = ({ curve, offset }) => {
-    const ref = useRef<THREE.Group>(null);
+// Optimized to use Instance instead of separate meshes
+const FallingStarInstance: React.FC<{ curve: THREE.CatmullRomCurve3, offset: number }> = ({ curve, offset }) => {
+    const ref = useRef<any>(null);
     const speed = 0.1 + Math.random() * 0.1;
     const posRef = useRef(Math.random());
-    const spread = 4; 
+    const spread = 3; 
 
     useFrame((state, delta) => {
         if (!ref.current) return;
@@ -144,6 +145,8 @@ const FallingStar: React.FC<{ curve: THREE.CatmullRomCurve3, offset: number }> =
         const jitterZ = Math.cos(state.clock.elapsedTime * 3 + offset * 100) * spread * 0.5;
         
         ref.current.position.set(point.x + jitterX, point.y, point.z + jitterZ);
+        
+        // Visual rotation
         ref.current.rotation.x += delta * 2;
         ref.current.rotation.y += delta * 2;
         
@@ -151,7 +154,7 @@ const FallingStar: React.FC<{ curve: THREE.CatmullRomCurve3, offset: number }> =
         ref.current.scale.setScalar(s);
     });
 
-    return <group ref={ref} />;
+    return <Instance ref={ref} />;
 }
 
 const PhysicsGround = () => {
@@ -168,11 +171,11 @@ const PhysicsGround = () => {
     );
 }
 
-const DistantMountains = () => {
+const DistantMountains = React.memo(() => {
     return (
         <group>
-            {[...Array(12)].map((_, i) => {
-                const angle = (i / 12) * Math.PI * 2;
+            {[...Array(8)].map((_, i) => {
+                const angle = (i / 8) * Math.PI * 2;
                 const dist = 80 + Math.random() * 20;
                 const x = Math.cos(angle) * dist;
                 const z = Math.sin(angle) * dist;
@@ -186,19 +189,19 @@ const DistantMountains = () => {
             })}
         </group>
     )
-}
+});
 
-const FarmFields = () => {
+const FarmFields = React.memo(() => {
     return (
         <group position={[30, 0.1, -20]}>
             <mesh rotation={[-Math.PI/2, 0, 0]} receiveShadow>
                 <planeGeometry args={[25, 25]} />
                 <meshStandardMaterial color={COLORS.DIRT} />
             </mesh>
-            <Instances range={200}>
+            <Instances range={100}>
                 <boxGeometry args={[0.2, 0.8, 0.2]} />
                 <meshStandardMaterial color={COLORS.CROP_WHEAT} />
-                {[...Array(200)].map((_, i) => (
+                {[...Array(100)].map((_, i) => (
                     <Instance 
                         key={i} 
                         position={[
@@ -211,9 +214,9 @@ const FarmFields = () => {
             </Instances>
         </group>
     )
-}
+});
 
-const VegetationLayer = ({ count, minRange, maxRange }: { count: number, minRange: number, maxRange: number }) => {
+const VegetationLayer = React.memo(({ count, minRange, maxRange }: { count: number, minRange: number, maxRange: number }) => {
     const trees = useMemo(() => {
         const t = [];
         for(let i=0; i<count; i++) {
@@ -246,12 +249,12 @@ const VegetationLayer = ({ count, minRange, maxRange }: { count: number, minRang
             })}
         </group>
     )
-}
+});
 
 // ... (Tree components unchanged, assume they are good) ...
 const PeachTree: React.FC<{ position: [number, number, number], scale?: number }> = ({ position, scale = 1 }) => {
     const leaves = useMemo(() => {
-        const count = 25; 
+        const count = 15;  // Reduced count
         return [...Array(count)].map((_, i) => {
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.acos((Math.random() * 2) - 1);
@@ -319,8 +322,8 @@ const PineTree: React.FC<{ position: [number, number, number], scale?: number }>
 
 const WillowTree: React.FC<{ position: [number, number, number], scale?: number }> = ({ position, scale = 1 }) => {
     const branches = useMemo(() => {
-        return [...Array(12)].map((_, i) => {
-            const angle = (i / 12) * Math.PI * 2 + Math.random();
+        return [...Array(8)].map((_, i) => { // Reduced branches
+            const angle = (i / 8) * Math.PI * 2 + Math.random();
             const r = 0.8 + Math.random() * 0.5;
             return {
                 x: Math.cos(angle) * r,
@@ -354,7 +357,7 @@ const WillowTree: React.FC<{ position: [number, number, number], scale?: number 
 
 const Bamboo: React.FC<{ position: [number, number, number], scale?: number }> = ({ position, scale = 1 }) => {
     const stalks = useMemo(() => {
-        const count = 5 + Math.floor(Math.random() * 4);
+        const count = 3 + Math.floor(Math.random() * 3); // Reduced stalks
         return [...Array(count)].map((_, i) => {
              const angle = Math.random() * Math.PI * 2;
              const dist = 0.2 + Math.random() * 0.5;
@@ -377,7 +380,7 @@ const Bamboo: React.FC<{ position: [number, number, number], scale?: number }> =
                         <cylinderGeometry args={[0.05, 0.08, stalk.height, 5]} />
                         <meshStandardMaterial color={stalk.color} />
                     </mesh>
-                    {[1, 2, 3].map(k => (
+                    {[1, 2].map(k => ( // Reduced leaves per stalk
                          <group key={k} position={[0, stalk.height - k * 0.5, 0]} rotation={[0, Math.random() * Math.PI, 0]}>
                             <mesh position={[0.3, 0, 0]} rotation={[0, 0, -0.3]}>
                                 <boxGeometry args={[0.6, 0.02, 0.1]} />
@@ -410,9 +413,9 @@ const VILLAGER_PALETTES = [
     { robe: '#FBC02D', pants: '#F57F17' }, // Yellow monk-ish
 ];
 
-export const PopulationSystem = () => {
+export const PopulationSystem = React.memo(() => {
     const villagers = useMemo(() => {
-        return [...Array(60)].map((_, i) => {
+        return [...Array(24)].map((_, i) => { // Reduced count from 60 to 24
             const palette = VILLAGER_PALETTES[Math.floor(Math.random() * VILLAGER_PALETTES.length)];
             
             const config: VillagerConfig = {
@@ -433,11 +436,11 @@ export const PopulationSystem = () => {
             return {
                 id: i,
                 startPos: [
-                    (Math.random() - 0.5) * 70,
+                    (Math.random() - 0.5) * 60,
                     0,
-                    (Math.random() - 0.5) * 70
+                    (Math.random() - 0.5) * 60
                 ] as [number, number, number],
-                role: i < 10 ? 'mahjong' : i < 30 ? 'farmer' : 'walker',
+                role: i < 4 ? 'mahjong' : i < 12 ? 'farmer' : 'walker',
                 config
             };
         });
@@ -446,8 +449,6 @@ export const PopulationSystem = () => {
     return (
         <group>
             <MahjongTable position={[5, 0, 8]} />
-            <MahjongTable position={[8, 0, 12]} />
-            <MahjongTable position={[20, 0, 5]} />
             
             {villagers.map(v => {
                 if (v.role === 'mahjong') return null; 
@@ -462,7 +463,7 @@ export const PopulationSystem = () => {
             })}
         </group>
     );
-};
+});
 
 interface VillagerProps {
     position: [number, number, number];
@@ -474,6 +475,7 @@ interface VillagerProps {
 // New Villager Component with enhanced articulation
 export const Villager: React.FC<VillagerProps> = ({ position, role, config, rotation = 0 }) => {
     const groupRef = useRef<THREE.Group>(null);
+    const { camera } = useThree(); // To check distance for LOD
     
     // Body parts refs
     const hipsRef = useRef<THREE.Group>(null);
@@ -492,6 +494,12 @@ export const Villager: React.FC<VillagerProps> = ({ position, role, config, rota
     
     useFrame(({ clock }) => {
         if (!groupRef.current) return;
+
+        // LOD Check: If far away, don't animate limbs
+        if (camera.position.distanceTo(groupRef.current.position) > 35) {
+             return; 
+        }
+
         const t = clock.getElapsedTime() + seed;
         const delta = clock.getDelta();
         
@@ -513,11 +521,6 @@ export const Villager: React.FC<VillagerProps> = ({ position, role, config, rota
             groupRef.current.rotation.y = rotation;
 
         } else if (role === 'sitting') {
-            // Place butt at seat height. 
-            // Our model 'hips' are at y=0.6 (standing).
-            // Sitting: hips should be at SEAT_HEIGHT = 0.4.
-            // So group position stays at ground (0,0,0) + offset?
-            // Easier to just move the whole group to seat location
             groupRef.current.position.set(position[0], 0, position[2]); 
             groupRef.current.rotation.y = rotation;
         }
@@ -702,15 +705,6 @@ export const Villager: React.FC<VillagerProps> = ({ position, role, config, rota
                                 <planeGeometry args={[0.03, 0.03]} />
                                 <meshBasicMaterial color="black" />
                             </mesh>
-                            {/* Blush/Cheeks */}
-                            <mesh position={[-0.08, -0.04, 0]}>
-                                <planeGeometry args={[0.04, 0.02]} />
-                                <meshBasicMaterial color="#FFCDD2" />
-                            </mesh>
-                            <mesh position={[0.08, -0.04, 0]}>
-                                <planeGeometry args={[0.04, 0.02]} />
-                                <meshBasicMaterial color="#FFCDD2" />
-                            </mesh>
                         </group>
 
                         {/* Hair */}
@@ -779,8 +773,17 @@ export const MahjongTable = ({ position }: { position: [number, number, number] 
 
             {[0, 1, 2, 3].map(i => {
                 const angle = (i / 4) * Math.PI * 2;
-                
-                // Generate deterministic config based on seat index + position
+                const x = Math.cos(angle) * 1.1;
+                const z = Math.sin(angle) * 1.1;
+
+                // Explicit rotations for 4-way seating to ensure inward facing
+                // 0: Right (East) -> Faces Left (-X) -> -PI/2
+                // 1: Bottom (South) -> Faces Up (-Z) -> PI
+                // 2: Left (West) -> Faces Right (+X) -> PI/2
+                // 3: Top (North) -> Faces Down (+Z) -> 0
+                const rotations = [-Math.PI/2, Math.PI, Math.PI/2, 0];
+
+                // Generate deterministic config
                 const config: VillagerConfig = {
                      robeColor: i % 2 === 0 ? COLORS.CLOTH_BLUE : '#5D4037',
                      pantsColor: '#333',
@@ -790,7 +793,7 @@ export const MahjongTable = ({ position }: { position: [number, number, number] 
                 };
 
                 return (
-                    <group key={i} position={[Math.cos(angle)*1.1, 0, Math.sin(angle)*1.1]} rotation={[0, -angle + Math.PI/2, 0]}>
+                    <group key={i} position={[x, 0, z]} rotation={[0, rotations[i], 0]}>
                         {/* Stool - Top at 0.4 */}
                         <mesh position={[0, 0.2, 0]}>
                             <cylinderGeometry args={[0.25, 0.25, 0.4]} />
@@ -810,15 +813,15 @@ export const MahjongTable = ({ position }: { position: [number, number, number] 
     )
 }
 
-export const CloudLayer = () => {
+export const CloudLayer = React.memo(() => {
     return (
         <group position={[0, 25, 0]}>
-            {[...Array(15)].map((_, i) => (
+            {[...Array(8)].map((_, i) => ( // Reduced clouds
                 <Cloud key={i} position={[(Math.random()-0.5)*100, (Math.random()-0.5)*5, (Math.random()-0.5)*100]} speed={0.05 + Math.random()*0.1} />
             ))}
         </group>
     )
-}
+});
 
 export const Cloud: React.FC<{ position: [number, number, number], speed: number }> = ({ position, speed }) => {
     const ref = useRef<THREE.Group>(null);

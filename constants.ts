@@ -1,3 +1,4 @@
+
 import { VoxelData, VoxelShape } from './types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -28,17 +29,16 @@ export const COLORS = {
 
 const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1) + min);
 
-// High resolution block size (0.5 units instead of 1)
-export const BLOCK_SCALE = 0.5;
+// High resolution block size (Increased to 0.8 to reduce total physics body count by ~75%)
+export const BLOCK_SCALE = 0.8;
 
 const createComplexHouse = (offsetX: number, offsetZ: number, rotation: number = 0): VoxelData[] => {
     const blocks: VoxelData[] = [];
     
     // Local grid coordinates
-    const width = randInt(10, 14);
-    const depth = randInt(8, 12);
-    const height = randInt(6, 8);
-    const hasPorch = Math.random() > 0.5;
+    const width = randInt(8, 12); // Slightly reduced dimensions for performance
+    const depth = randInt(6, 10);
+    const height = randInt(5, 7);
 
     // Helper to rotate point around center
     const rotatePoint = (x: number, z: number) => {
@@ -95,7 +95,7 @@ const createComplexHouse = (offsetX: number, offsetZ: number, rotation: number =
     }
 
     // Roof (Hip and Gable style)
-    const roofHeight = 5;
+    const roofHeight = 4;
     for(let y = 0; y <= roofHeight; y++) {
         // Overhang
         const outline = -1 + y; 
@@ -132,10 +132,8 @@ const createComplexHouse = (offsetX: number, offsetZ: number, rotation: number =
 export const GENERATE_VILLAGE_LAYOUT = (): VoxelShape => {
     let allBlocks: VoxelData[] = [];
     
-    // Create 8-12 houses distributed organically
-    // We will use a simple spiral/scatter algorithm to place them avoiding 0,0 (center)
-    
-    const houseCount = 10;
+    // Reduced house count for performance
+    const houseCount = 6; 
     for(let i=0; i<houseCount; i++) {
         const angle = (i / houseCount) * Math.PI * 2 + (Math.random() * 0.5);
         const dist = 15 + Math.random() * 25; // Scattered 15-40 units away

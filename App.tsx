@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Sky, Stars } from '@react-three/drei';
@@ -22,7 +23,7 @@ const Lighting = () => (
       position={[50, 80, 25]} 
       intensity={1.5} 
       castShadow 
-      shadow-mapSize={[2048, 2048]}
+      shadow-mapSize={[1024, 1024]} // Optimization: Reduced shadow resolution
     >
       <orthographicCamera attach="shadow-camera" args={[-80, 80, 80, -80]} />
     </directionalLight>
@@ -120,7 +121,9 @@ const App = () => {
         </div>
       </div>
 
-      <Canvas shadows camera={{ position: [0, 10, 20], fov: 50 }}>
+      {/* Optimization: dpr limits pixel ratio for better performance on high-res screens */}
+      {/* Tighter camera position [0, 5, 5] to match the reduced maxDistance radius */}
+      <Canvas shadows camera={{ position: [0, 5, 5], fov: 50 }} dpr={[1, 1.5]}>
         <fog attach="fog" args={['#FFDEE9', 20, 120]} /> 
         
         <Suspense fallback={null}>
