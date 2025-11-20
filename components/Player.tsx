@@ -136,7 +136,7 @@ export const Player = () => {
             enableDamping={true} 
             dampingFactor={0.1} 
             rotateSpeed={0.3} // Reduced rotation speed for smoother feel
-            maxPolarAngle={flyMode ? Math.PI : Math.PI / 2 - 0.05}
+            maxPolarAngle={Math.PI - 0.25} // Allow looking up significantly
             minDistance={2} 
             maxDistance={5} // EXTREMELY REDUCED: Keeps camera very tight to player
         />
