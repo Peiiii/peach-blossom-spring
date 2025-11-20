@@ -86,9 +86,9 @@ const StreetLamp = ({ position, isNight }: { position: [number, number, number],
                 <meshStandardMaterial 
                     color={isNight ? "#FFF9C4" : "#F5F5F5"} 
                     emissive={isNight ? "#FFD54F" : "#000000"}
-                    emissiveIntensity={isNight ? 1.5 : 0}
+                    emissiveIntensity={isNight ? 4.0 : 0}
                 />
-                {isNight && <pointLight distance={15} decay={2} intensity={1.5} color="#FFD54F" castShadow />}
+                {isNight && <pointLight distance={25} decay={2} intensity={10} color="#FFD54F" castShadow />}
              </mesh>
         </group>
     )

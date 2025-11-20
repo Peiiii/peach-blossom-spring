@@ -34,10 +34,11 @@ const Sun = () => {
 
 const Lighting = ({ isNight }: { isNight: boolean }) => (
   <>
-    <ambientLight intensity={isNight ? 0.05 : 0.5} />
+    {/* Increased ambient intensity for night to simulate starlight bounce */}
+    <ambientLight intensity={isNight ? 0.3 : 0.5} />
     <directionalLight 
       position={isNight ? [-20, 40, -20] : [50, 80, 25]} 
-      intensity={isNight ? 0.2 : 1.5} 
+      intensity={isNight ? 0.6 : 1.5} 
       color={isNight ? "#88aadd" : "#fffacd"}
       castShadow 
       shadow-mapSize={[2048, 2048]}
