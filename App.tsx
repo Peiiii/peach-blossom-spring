@@ -97,8 +97,10 @@ const App = () => {
               <div className="text-white text-sm font-bold drop-shadow-md bg-black/40 p-3 rounded backdrop-blur-sm inline-block">
                 <p className="text-yellow-300 mb-1">🎮 CONTROLS</p>
                 <p>• WASD: Move</p>
+                <p>• SPACE: Jump / Up</p>
+                <p>• SHIFT: Descend</p>
+                <p>• F: Toggle Fly Mode</p>
                 <p>• DRAG: Rotate Camera</p>
-                <p>• SPACE: Jump</p>
               </div>
             </div>
         </div>

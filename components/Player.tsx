@@ -7,21 +7,24 @@ import { usePlayerControls } from '../hooks/usePlayerControls';
 import { COLORS } from '../constants';
 
 const WALK_SPEED = 10;
+const FLY_SPEED = 20;
 const JUMP_FORCE = 15;
 const GRAVITY = 30;
 
 export const Player = () => {
   const { camera } = useThree();
-  const { forward, backward, left, right, jump } = usePlayerControls();
+  const { forward, backward, left, right, jump, descend, flyMode } = usePlayerControls();
   
   // 1. Source of Truth: Visual Position
   // We calculate this manually every frame.
   const position = useRef(new THREE.Vector3(0, 10, 0)); 
   const velocity = useRef(new THREE.Vector3(0, 0, 0));
+  const prevPosition = useRef(new THREE.Vector3(0, 10, 0));
   
+  const propellerRef = useRef<THREE.Mesh>(null);
+
   // 2. Physics Body (Kinematic)
   // Type: 'Kinematic' means "I control the position, Physics engine calculates collisions based on my movement"
-  // This prevents the player from tipping over, getting stuck, or floating weirdly.
   const [ref, api] = useSphere(() => ({
     mass: 1,
     type: 'Kinematic', 
@@ -42,10 +45,11 @@ export const Player = () => {
     const sideInput = Number(left) - Number(right);
     
     const moveVector = new THREE.Vector3(sideInput, 0, frontInput);
+    const currentSpeed = flyMode ? FLY_SPEED : WALK_SPEED;
     
     // If moving
     if (moveVector.length() > 0) {
-        moveVector.normalize().multiplyScalar(WALK_SPEED * dt);
+        moveVector.normalize().multiplyScalar(currentSpeed * dt);
 
         // Align movement with Camera Angle
         const cameraEuler = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
@@ -63,41 +67,62 @@ export const Player = () => {
         }
     }
 
-    // --- B. GRAVITY (Manual) ---
-    // Always apply gravity
-    velocity.current.y -= GRAVITY * dt;
-    
-    // Apply Y velocity
-    position.current.y += velocity.current.y * dt;
-
-    // --- C. GROUND COLLISION (Hardcoded) ---
-    // Simple floor check at Y=0
-    if (position.current.y <= 0) {
-        position.current.y = 0;
+    if (flyMode) {
+        // --- B. FLIGHT MODE PHYSICS ---
+        // No gravity. Velocity is controlled directly by input.
+        let verticalSpeed = 0;
+        if (jump) verticalSpeed += FLY_SPEED;
+        if (descend) verticalSpeed -= FLY_SPEED;
+        
+        // Smooth vertical movement
+        position.current.y += verticalSpeed * dt;
+        
+        // Reset accumulated velocity so we don't rocket off when switching back to walk
         velocity.current.y = 0;
         
-        // Jump is only allowed when grounded
-        if (jump) {
-            velocity.current.y = JUMP_FORCE;
+        // Animate propeller
+        if (propellerRef.current) {
+            propellerRef.current.rotation.z += dt * 20;
+        }
+
+    } else {
+        // --- B. NORMAL GRAVITY ---
+        velocity.current.y -= GRAVITY * dt;
+        position.current.y += velocity.current.y * dt;
+
+        // --- C. GROUND COLLISION (Hardcoded) ---
+        // Simple floor check at Y=0
+        if (position.current.y <= 0) {
+            position.current.y = 0;
+            velocity.current.y = 0;
+            
+            // Jump is only allowed when grounded
+            if (jump) {
+                velocity.current.y = JUMP_FORCE;
+            }
         }
     }
 
     // --- D. SYNC TO PHYSICS ---
     // Teleport the physics body to our calculated position
-    // This ensures we smash into blocks if we run into them
     api.position.set(position.current.x, position.current.y + 0.5, position.current.z);
 
-    // --- E. CAMERA FOLLOW ---
+    // --- E. CAMERA FOLLOW (Fixed Angle) ---
+    // 1. Calculate movement delta
+    const displacement = new THREE.Vector3().copy(position.current).sub(prevPosition.current);
+    
+    // 2. Apply exact same movement to camera position
+    camera.position.add(displacement);
+
     if (controlsRef.current) {
-        const target = new THREE.Vector3(
-            position.current.x,
-            position.current.y + 1.5, 
-            position.current.z
-        );
-        // Smoothly interpolate camera target
-        controlsRef.current.target.lerp(target, 0.2);
+        // 3. Update controls target to match player
+        // Use copy/set instead of lerp to keep perfect sync with the rigid camera move
+        controlsRef.current.target.copy(position.current).add(new THREE.Vector3(0, 1.5, 0));
         controlsRef.current.update();
     }
+    
+    // Update history
+    prevPosition.current.copy(position.current);
   });
 
   return (
@@ -106,13 +131,21 @@ export const Player = () => {
             ref={controlsRef}
             enablePan={false}
             enableZoom={true}
-            maxPolarAngle={Math.PI / 2 - 0.05} // Prevent looking underground
+            maxPolarAngle={flyMode ? Math.PI : Math.PI / 2 - 0.05} // Allow looking down freely when flying
             minDistance={5}
             maxDistance={30}
         />
 
         {/* The Visual Character */}
         <group ref={ref as any}>
+            {/* Flight visual indicator (Propeller) */}
+            {flyMode && (
+                <mesh ref={propellerRef} position={[0, 1.8, -0.3]}>
+                     <boxGeometry args={[0.8, 0.05, 0.05]} />
+                     <meshStandardMaterial color="#FFD700" emissive="#FFD700" emissiveIntensity={0.5} />
+                </mesh>
+            )}
+            
             <group position={[0, -0.5, 0]}>
                 {/* Body */}
                 <mesh castShadow position={[0, 0.75, 0]}>
@@ -134,6 +167,13 @@ export const Player = () => {
                     <boxGeometry args={[0.3, 0.4, 0.15]} />
                     <meshStandardMaterial color={COLORS.WOOD_LIGHT} />
                 </mesh>
+                {/* Jet/Cape for flight */}
+                {flyMode && (
+                    <mesh position={[0, 0.6, -0.4]}>
+                        <boxGeometry args={[0.2, 0.5, 0.1]} />
+                        <meshStandardMaterial color="#555" />
+                    </mesh>
+                )}
             </group>
         </group>
     </>

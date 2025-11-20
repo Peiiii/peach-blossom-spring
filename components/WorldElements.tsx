@@ -29,6 +29,7 @@ export const OrganicEnvironment = () => {
     return (
         <group>
             <PhysicsGround />
+            <GalaxyWaterfall />
             <mesh geometry={riverGeo} position={[0, -0.5, 0]} receiveShadow>
                 <meshStandardMaterial color={COLORS.WATER} roughness={0.1} metalness={0.1} opacity={0.9} transparent />
             </mesh>
@@ -41,6 +42,123 @@ export const OrganicEnvironment = () => {
         </group>
     );
 };
+
+const GalaxyWaterfall = () => {
+    const textureRef = useRef<THREE.Texture>(null);
+    
+    // Generate a tall curve from sky to ground
+    const waterfallCurve = useMemo(() => {
+        const points = [];
+        // Start high in the sky (The Nine Heavens)
+        points.push(new THREE.Vector3(-40, 120, -40));
+        points.push(new THREE.Vector3(-35, 100, -35));
+        points.push(new THREE.Vector3(-30, 60, -30));
+        points.push(new THREE.Vector3(-25, 20, -25));
+        points.push(new THREE.Vector3(-20, 0, -20)); // Crash into ground
+        return new THREE.CatmullRomCurve3(points);
+    }, []);
+
+    const geometry = useMemo(() => new THREE.TubeGeometry(waterfallCurve, 64, 3, 8, false), [waterfallCurve]);
+    
+    useFrame(({ clock }) => {
+        // Animate texture to look like flowing water
+        if (textureRef.current) {
+            textureRef.current.offset.y -= 0.02;
+        }
+    });
+
+    // Create a simple noise texture for the flow
+    const flowTexture = useMemo(() => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, 64, 64);
+            ctx.fillStyle = '#FFFFFF';
+            for(let i=0; i<100; i++) {
+                ctx.fillRect(Math.random()*64, Math.random()*64, 2, 2);
+            }
+        }
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(5, 20);
+        return tex;
+    }, []);
+
+    return (
+        <group>
+            {/* The Waterfall Tube */}
+            <mesh geometry={geometry} position={[0, 0, 0]}>
+                 <meshPhysicalMaterial 
+                    map={flowTexture}
+                    color="#4FC3F7"
+                    emissive="#29B6F6"
+                    emissiveIntensity={2}
+                    transmission={0.6}
+                    opacity={0.9}
+                    transparent
+                    roughness={0}
+                    metalness={0.1}
+                    side={THREE.DoubleSide}
+                 />
+            </mesh>
+
+            {/* Splash Pool at the bottom */}
+            <mesh position={[-20, 0.1, -20]} rotation={[-Math.PI/2, 0, 0]}>
+                <circleGeometry args={[10, 32]} />
+                <meshStandardMaterial 
+                    color="#81D4FA" 
+                    emissive="#4FC3F7" 
+                    emissiveIntensity={0.5}
+                    transparent 
+                    opacity={0.8} 
+                />
+            </mesh>
+
+            {/* Falling Stars / Mist Particles */}
+            <Instances range={100}>
+                <boxGeometry args={[0.4, 0.4, 0.4]} />
+                <meshStandardMaterial color="white" emissive="white" emissiveIntensity={3} />
+                {[...Array(100)].map((_, i) => (
+                    <FallingStar key={i} curve={waterfallCurve} offset={i * 0.01} />
+                ))}
+            </Instances>
+        </group>
+    );
+};
+
+const FallingStar: React.FC<{ curve: THREE.CatmullRomCurve3, offset: number }> = ({ curve, offset }) => {
+    const ref = useRef<THREE.Group>(null);
+    const speed = 0.1 + Math.random() * 0.1;
+    const posRef = useRef(Math.random()); // position along curve (0-1)
+    const spread = 4; // How wide the river is
+
+    useFrame((state, delta) => {
+        if (!ref.current) return;
+        
+        posRef.current += speed * delta;
+        if (posRef.current > 1) posRef.current = 0;
+
+        const point = curve.getPointAt(posRef.current);
+        // Add some random jitter perpendicular to flow could be complex, so simplified random offset in world space relative to point
+        // For a tube, this simple jitter works visually enough
+        const jitterX = Math.sin(state.clock.elapsedTime * 5 + offset * 100) * spread * 0.5;
+        const jitterZ = Math.cos(state.clock.elapsedTime * 3 + offset * 100) * spread * 0.5;
+        
+        ref.current.position.set(point.x + jitterX, point.y, point.z + jitterZ);
+        ref.current.rotation.x += delta * 2;
+        ref.current.rotation.y += delta * 2;
+        
+        // Scale based on height (dissolve at bottom)
+        const s = 1 - Math.pow(posRef.current, 4); 
+        ref.current.scale.setScalar(s);
+    });
+
+    return <group ref={ref} />;
+}
 
 const PhysicsGround = () => {
     const [ref] = usePlane(() => ({ 
