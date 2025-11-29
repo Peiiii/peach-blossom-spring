@@ -1,29 +1,23 @@
 
+
 import React, { useMemo } from 'react';
 import { usePlane, useBox } from '@react-three/cannon';
-import { COLORS, getRiverPath, RIVER_WIDTH, BRIDGE_Z_OFFSET } from '../../constants';
+import { COLORS, getRiverPath, RIVER_WIDTH, BRIDGE_Z_OFFSET, BRIDGE_WIDTH, BRIDGE_LENGTH } from '../../constants';
 
 // Generates physics boxes for the ground, leaving a gap for the river
 export const PhysicsGround = () => {
     // We create "strips" of ground along the X axis.
-    // For each segment of X, we calculate the river's Z position.
-    // We place a box from -Infinity to (RiverZ - Width/2)
-    // And another from (RiverZ + Width/2) to +Infinity
-    
-    const STRIP_WIDTH = 2; // Size of each physics slice along X
-    const WORLD_SIZE = 120; // How far out we generate
+    // Reduced STRIP_WIDTH from 2 to 0.5 for much smoother river edges
+    const STRIP_WIDTH = 0.5; 
+    const WORLD_SIZE = 120; 
 
     const strips = useMemo(() => {
         const items = [];
         for (let x = -WORLD_SIZE/2; x < WORLD_SIZE/2; x += STRIP_WIDTH) {
             const riverZ = getRiverPath(x + STRIP_WIDTH/2); // Sample center of strip
             
-            const bankLeftZ = -WORLD_SIZE; // Far left edge
-            const bankRightZ = WORLD_SIZE; // Far right edge
-
             // Left Bank Box
             // Center Z is halfway between far edge and river edge
-            // Width is distance between them
             const riverLeftEdge = riverZ - RIVER_WIDTH / 2;
             const riverRightEdge = riverZ + RIVER_WIDTH / 2;
 
@@ -98,12 +92,12 @@ const BridgePhysical = () => {
     const [ref] = useBox(() => ({
         type: 'Static',
         position: [0, 0.1, BRIDGE_Z_OFFSET],
-        args: [4, 0.2, 8] // Width 4, Thickness 0.2, Length 8 (spans river width 6)
+        args: [BRIDGE_WIDTH, 0.2, BRIDGE_LENGTH] 
     }));
 
     return (
         <mesh ref={ref as any}>
-            <boxGeometry args={[4, 0.2, 8]} />
+            <boxGeometry args={[BRIDGE_WIDTH, 0.2, BRIDGE_LENGTH]} />
             <meshStandardMaterial color={COLORS.WOOD_DARK} />
         </mesh>
     );

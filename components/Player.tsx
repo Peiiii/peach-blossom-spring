@@ -1,11 +1,12 @@
 
+
 import React, { useEffect, useRef, useState } from 'react';
 import { useSphere } from '@react-three/cannon';
 import { useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { usePlayerControls } from '../hooks/usePlayerControls';
-import { COLORS } from '../constants';
+import { COLORS, getRiverPath, RIVER_WIDTH, BRIDGE_Z_OFFSET, BRIDGE_WIDTH, BRIDGE_LENGTH } from '../constants';
 
 const WALK_SPEED = 10;
 const FLY_SPEED = 20;
@@ -93,37 +94,40 @@ export const Player = () => {
         position.current.y += velocity.current.y * dt;
 
         // --- C. GROUND COLLISION ---
-        // We removed the hardcoded 'y < 0' check.
-        // Instead, we clamp at a much lower "Kill floor" so they don't fall forever if they glitch out.
-        // The Physics/Terrain system will prevent them falling through the actual ground (y=0) or river bed (y=-2).
+        // Respawn if fell into void
         if (position.current.y <= -20) {
              position.current.y = 10; // Respawn in sky
              velocity.current.y = 0;
         }
 
-        // Basic floor snap for jump logic when very close to something solid? 
-        // Since we are Kinematic, we don't get 'collisions' automatically affecting position.
-        // However, standard Kinematic character controllers usually need Raycasts.
-        // For this simple demo, we will re-introduce a floor check relative to where the terrain SHOULD be.
-        // But since we want to fall in the river, we can't just say `if y < 0`.
-        
-        // HACK for Kinematic + Terrain holes:
-        // We will let the user 'fly' slightly if they walk off an edge, until they hit the -2 floor.
-        // Actually, Kinematic bodies pass through Static bodies unless we do raycasting.
-        // Changing to Dynamic would solve this, but Dynamic inputs feel floaty.
-        
-        // Let's implement a simple "Floor Height" function check based on the river.
-        // This simulates physics collision without expensive raycasting.
-        
-        const riverZ = Math.sin(position.current.x * 0.05) * 15 + Math.cos(position.current.x * 0.15) * 5; // Copy of logic from constants
+        // --- Custom Floor Logic ---
+        // Since we are Kinematic, we handle "floor" snap manually.
+        // We must detect if we are over solid ground, the bridge, or the river gap.
+
+        const riverZ = getRiverPath(position.current.x);
         const distToRiver = Math.abs(position.current.z - riverZ);
-        const RIVER_WIDTH = 6;
         
-        let groundHeight = 0;
+        let groundHeight = 0; // Default terrain height
+        
+        // 1. Check River (Hole)
         if (distToRiver < RIVER_WIDTH / 2) {
-            groundHeight = -2.0; // River Bed
+            groundHeight = -1.8; // Water Bed Level (Water is at -1.2, floor at -2.0 usually)
         }
 
+        // 2. Check Bridge (Platform over River)
+        // Bridge allows crossing the gap.
+        const halfBridgeWidth = BRIDGE_WIDTH / 2; // e.g. 2
+        const halfBridgeLength = BRIDGE_LENGTH / 2; // e.g. 6
+
+        const onBridgeX = Math.abs(position.current.x) < halfBridgeWidth;
+        const onBridgeZ = Math.abs(position.current.z - BRIDGE_Z_OFFSET) < halfBridgeLength;
+
+        if (onBridgeX && onBridgeZ) {
+             groundHeight = 0.2; // Bridge height
+        }
+
+        // 3. Apply Floor Snap
+        // If we are below the valid ground height for this X/Z, snap up and stop falling.
         if (position.current.y <= groundHeight) {
             position.current.y = groundHeight;
             velocity.current.y = 0;

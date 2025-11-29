@@ -1,4 +1,5 @@
 
+
 import { VoxelData, VoxelShape } from './types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -40,6 +41,8 @@ export const getRiverPath = (x: number) => {
 
 export const RIVER_WIDTH = 6;
 export const BRIDGE_Z_OFFSET = getRiverPath(0); // Where the bridge crosses x=0
+export const BRIDGE_WIDTH = 4; // Width of the bridge deck
+export const BRIDGE_LENGTH = 14; // Length to span the river + bank overlap
 
 const createComplexHouse = (offsetX: number, offsetZ: number, rotation: number = 0): VoxelData[] => {
     const blocks: VoxelData[] = [];

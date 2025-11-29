@@ -1,7 +1,9 @@
+
+
 import React, { useRef, useState, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { COLORS } from '../../constants';
+import { COLORS, getRiverPath, RIVER_WIDTH, BRIDGE_Z_OFFSET, BRIDGE_WIDTH, BRIDGE_LENGTH } from '../../constants';
 
 interface VillagerConfig {
     robeColor: string;
@@ -22,7 +24,7 @@ const VILLAGER_PALETTES = [
 
 export const PopulationSystem = React.memo(() => {
     const villagers = useMemo(() => {
-        return [...Array(24)].map((_, i) => { // Reduced count from 60 to 24
+        return [...Array(24)].map((_, i) => { 
             const palette = VILLAGER_PALETTES[Math.floor(Math.random() * VILLAGER_PALETTES.length)];
             
             const config: VillagerConfig = {
@@ -40,13 +42,18 @@ export const PopulationSystem = React.memo(() => {
                 config.robeColor = '#EF6C00'; // Orange robe
             }
 
+            // Ensure spawn is safe
+            let spawnX = (Math.random() - 0.5) * 60;
+            let spawnZ = (Math.random() - 0.5) * 60;
+            // Simple spawn safety check - if in river, push to bank
+            const rZ = getRiverPath(spawnX);
+            if (Math.abs(spawnZ - rZ) < RIVER_WIDTH + 2) {
+                spawnZ = rZ + RIVER_WIDTH + 3;
+            }
+
             return {
                 id: i,
-                startPos: [
-                    (Math.random() - 0.5) * 60,
-                    0,
-                    (Math.random() - 0.5) * 60
-                ] as [number, number, number],
+                startPos: [spawnX, 0, spawnZ] as [number, number, number],
                 role: i < 4 ? 'mahjong' : i < 12 ? 'farmer' : 'walker',
                 config
             };
@@ -80,14 +87,19 @@ interface VillagerProps {
 }
 
 // New Villager Component with enhanced articulation
-export const Villager: React.FC<VillagerProps> = ({ position, role, config, rotation = 0 }) => {
+export const Villager: React.FC<VillagerProps> = ({ position: initialPos, role, config, rotation = 0 }) => {
     const groupRef = useRef<THREE.Group>(null);
     const { camera } = useThree(); // To check distance for LOD
     
+    // State for autonomous movement
+    const pos = useRef(new THREE.Vector3(initialPos[0], initialPos[1], initialPos[2]));
+    const dir = useRef(new THREE.Vector3(Math.random()-0.5, 0, Math.random()-0.5).normalize());
+    const velocityY = useRef(0);
+    
     // Body parts refs
     const hipsRef = useRef<THREE.Group>(null);
-    const torsoRef = useRef<THREE.Group>(null); // Pivots at hips
-    const headRef = useRef<THREE.Group>(null); // Pivots at neck
+    const torsoRef = useRef<THREE.Group>(null); 
+    const headRef = useRef<THREE.Group>(null); 
     const leftArmRef = useRef<THREE.Group>(null);
     const rightArmRef = useRef<THREE.Group>(null);
     const leftLegRef = useRef<THREE.Group>(null);
@@ -99,40 +111,84 @@ export const Villager: React.FC<VillagerProps> = ({ position, role, config, rota
     // Seat height for sitting (stool is 0.4 high)
     const SEAT_HEIGHT = 0.4;
     
-    useFrame(({ clock }) => {
+    useFrame(({ clock }, delta) => {
         if (!groupRef.current) return;
 
-        // LOD Check: If far away, don't animate limbs
-        if (camera.position.distanceTo(groupRef.current.position) > 35) {
-             return; 
-        }
+        // LOD Check
+        if (camera.position.distanceTo(groupRef.current.position) > 40) return;
 
         const t = clock.getElapsedTime() + seed;
-        const delta = clock.getDelta();
         
-        // --- Global Position / Role Logic ---
-        if (role === 'walker') {
-            // Simple patrol
-            const r = 15;
-            const x = position[0] + Math.sin(t * 0.15) * r;
-            const z = position[2] + Math.cos(t * 0.1) * r;
-            const nextX = position[0] + Math.sin((t + 0.1) * 0.15) * r;
-            const nextZ = position[2] + Math.cos((t + 0.1) * 0.1) * r;
-            
-            groupRef.current.position.set(x, 0, z);
-            groupRef.current.lookAt(nextX, 0, nextZ);
-            
-        } else if (role === 'farmer') {
-            // Static position, but animated body
-            groupRef.current.position.set(position[0], 0, position[2]);
-            groupRef.current.rotation.y = rotation;
+        // --- Physics & AI Logic ---
+        let groundHeight = 0;
+        const currentPos = pos.current;
+        const riverZ = getRiverPath(currentPos.x);
+        
+        // 1. Calculate Ground Height
+        const inRiver = Math.abs(currentPos.z - riverZ) < RIVER_WIDTH / 2;
+        const onBridge = Math.abs(currentPos.x) < BRIDGE_WIDTH/2 && Math.abs(currentPos.z - BRIDGE_Z_OFFSET) < BRIDGE_LENGTH/2;
 
-        } else if (role === 'sitting') {
-            groupRef.current.position.set(position[0], 0, position[2]); 
-            groupRef.current.rotation.y = rotation;
+        if (inRiver && !onBridge) {
+            groundHeight = -1.8; // Fall into water
+        } else if (onBridge) {
+            groundHeight = 0.2;
+        } else {
+            groundHeight = 0;
         }
 
-        // --- Articulation Logic ---
+        // 2. Walker Movement
+        if (role === 'walker') {
+            const speed = 2.0;
+            const nextPos = currentPos.clone().add(dir.current.clone().multiplyScalar(speed * delta));
+            
+            // Check boundary for next step
+            const nextRiverZ = getRiverPath(nextPos.x);
+            const willBeInRiver = Math.abs(nextPos.z - nextRiverZ) < RIVER_WIDTH / 2;
+            const willBeOnBridge = Math.abs(nextPos.x) < BRIDGE_WIDTH/2 && Math.abs(nextPos.z - BRIDGE_Z_OFFSET) < BRIDGE_LENGTH/2;
+
+            // Simple avoidance: If next step is water, turn around
+            if (willBeInRiver && !willBeOnBridge && groundHeight >= 0) {
+                 // Reflect
+                 dir.current.negate();
+                 // Add some randomness so they don't get stuck in loops
+                 dir.current.x += (Math.random() - 0.5); 
+                 dir.current.normalize();
+            } else {
+                 currentPos.x = nextPos.x;
+                 currentPos.z = nextPos.z;
+            }
+
+            // Also keep within world bounds
+            if (Math.abs(currentPos.x) > 55 || Math.abs(currentPos.z) > 55) dir.current.negate();
+
+            // Look direction
+            const lookTarget = currentPos.clone().add(dir.current);
+            groupRef.current.lookAt(lookTarget.x, groupRef.current.position.y, lookTarget.z);
+        } else {
+            // Static rotation for others
+             groupRef.current.rotation.y = rotation;
+        }
+
+        // 3. Gravity Application
+        if (currentPos.y > groundHeight) {
+             velocityY.current -= 9.8 * delta;
+             currentPos.y += velocityY.current * delta;
+             // Floor Snap
+             if (currentPos.y < groundHeight) {
+                 currentPos.y = groundHeight;
+                 velocityY.current = 0;
+             }
+        } else if (currentPos.y < groundHeight) {
+            // Snap up if we walked onto a higher platform (like bridge ramp)
+             currentPos.y = groundHeight;
+             velocityY.current = 0;
+        }
+        
+        // Apply position
+        groupRef.current.position.set(currentPos.x, currentPos.y, currentPos.z);
+
+
+        // --- Visual Articulation Logic ---
         
         // Default Pose Reset
         if (torsoRef.current) torsoRef.current.rotation.set(0, 0, 0);
@@ -142,7 +198,14 @@ export const Villager: React.FC<VillagerProps> = ({ position, role, config, rota
         if (rightLegRef.current) rightLegRef.current.rotation.set(0, 0, 0);
         if (hipsRef.current) hipsRef.current.position.y = 0.6; // Standard hip height
 
-        if (role === 'walker') {
+        // If falling/in water, flail arms
+        const isFalling = currentPos.y < -0.5;
+        if (isFalling) {
+            if (leftArmRef.current) leftArmRef.current.rotation.z = Math.PI - 0.5 + Math.sin(t*20)*0.5;
+            if (rightArmRef.current) rightArmRef.current.rotation.z = -Math.PI + 0.5 - Math.sin(t*20)*0.5;
+        }
+
+        if (role === 'walker' && !isFalling) {
             const speed = 8;
             const limbT = t * speed;
             
