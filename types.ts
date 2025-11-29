@@ -22,24 +22,8 @@ export enum AppState {
 declare global {
   namespace JSX {
     interface IntrinsicElements {
-      group: any;
-      mesh: any;
-      meshStandardMaterial: any;
-      meshBasicMaterial: any;
-      meshPhysicalMaterial: any;
-      boxGeometry: any;
-      planeGeometry: any;
-      sphereGeometry: any;
-      cylinderGeometry: any;
-      coneGeometry: any;
-      circleGeometry: any;
-      dodecahedronGeometry: any;
-      ambientLight: any;
-      directionalLight: any;
-      pointLight: any;
-      orthographicCamera: any;
-      fog: any;
-      color: any;
+      // Catch-all for React Three Fiber elements (mesh, group, boxGeometry, etc.)
+      [elemName: string]: any;
     }
   }
 }

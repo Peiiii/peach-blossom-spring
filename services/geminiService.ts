@@ -1,8 +1,7 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { VoxelShape } from "../types";
 import { FALLBACK_SHAPE, COLORS, BLOCK_SCALE } from "../constants";
-
-const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 
 export const generateNewHouseShape = async (currentShapeName: string): Promise<VoxelShape> => {
   if (!process.env.API_KEY) {
@@ -10,9 +9,13 @@ export const generateNewHouseShape = async (currentShapeName: string): Promise<V
     return FALLBACK_SHAPE;
   }
 
+  // Initialize client with API key directly from environment as per guidelines
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
   try {
-    const response = await genAI.models.generateContent({
-      model: 'gemini-2.5-flash',
+    // Use gemini-3-pro-preview for complex 3D structure generation tasks
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-preview',
       contents: `Create a complex 3D voxel structure representing a new form for the village.
       It should be different from a "${currentShapeName}". 
       Examples: "Grand Ancestral Hall", "Dragon Bridge", "Market Watchtower", "Twin Pagodas".

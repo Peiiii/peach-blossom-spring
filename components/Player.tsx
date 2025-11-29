@@ -111,6 +111,11 @@ export const Player = () => {
     // Teleport the physics body to our calculated position
     api.position.set(position.current.x, position.current.y + 0.5, position.current.z);
 
+    // FIX: Manually sync visual mesh to prevent lag/stuck issues with Kinematic bodies
+    if (ref.current) {
+        ref.current.position.set(position.current.x, position.current.y + 0.5, position.current.z);
+    }
+
     // --- E. CAMERA FOLLOW (Fixed Angle) ---
     // 1. Calculate movement delta
     const displacement = new THREE.Vector3().copy(position.current).sub(prevPosition.current);
