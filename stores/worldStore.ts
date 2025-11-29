@@ -8,14 +8,14 @@ interface WorldState {
   activeVoxels: VoxelData[];
   targetVoxels: VoxelData[] | null;
   isGenerating: boolean;
-  isNight: boolean;
+  timeOfDay: number; // 0 to 24
   
   setAppState: (state: AppState) => void;
   setCurrentShape: (shape: VoxelShape) => void;
   setActiveVoxels: (voxels: VoxelData[]) => void;
   setTargetVoxels: (voxels: VoxelData[] | null) => void;
   setIsGenerating: (isGenerating: boolean) => void;
-  setIsNight: (isNight: boolean) => void;
+  setTimeOfDay: (time: number) => void;
 }
 
 export const useWorldStore = create<WorldState>((set) => ({
@@ -24,12 +24,12 @@ export const useWorldStore = create<WorldState>((set) => ({
   activeVoxels: [],
   targetVoxels: null,
   isGenerating: false,
-  isNight: false,
+  timeOfDay: 12, // Default to Noon for bright light
 
   setAppState: (appState) => set({ appState }),
   setCurrentShape: (currentShape) => set({ currentShape }),
   setActiveVoxels: (activeVoxels) => set({ activeVoxels }),
   setTargetVoxels: (targetVoxels) => set({ targetVoxels }),
   setIsGenerating: (isGenerating) => set({ isGenerating }),
-  setIsNight: (isNight) => set({ isNight }),
+  setTimeOfDay: (timeOfDay) => set({ timeOfDay }),
 }));

@@ -11,9 +11,8 @@ export class WorldManager {
     setActiveVoxels(initialVoxels);
   }
 
-  toggleNight = () => {
-    const { isNight, setIsNight } = useWorldStore.getState();
-    setIsNight(!isNight);
+  setTime = (val: number) => {
+    useWorldStore.getState().setTimeOfDay(val);
   }
 
   smash = () => {

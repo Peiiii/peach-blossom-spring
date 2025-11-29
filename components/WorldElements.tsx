@@ -20,7 +20,7 @@ const generateCurve = (scale: number, seed: number) => {
     return new THREE.CatmullRomCurve3(points);
 };
 
-export const OrganicEnvironment = React.memo(({ isNight }: { isNight: boolean }) => {
+export const OrganicEnvironment = React.memo(({ timeOfDay }: { timeOfDay: number }) => {
     const riverCurve = useMemo(() => generateCurve(1, 0), []);
     const roadCurve = useMemo(() => generateCurve(1, 2), []);
 
@@ -42,7 +42,7 @@ export const OrganicEnvironment = React.memo(({ isNight }: { isNight: boolean })
             <mesh geometry={roadGeo} position={[0, 0.05, 0]} scale={[1, 0.05, 1]} receiveShadow>
                 <meshStandardMaterial color={COLORS.DIRT} roughness={1} />
             </mesh>
-            <LanternSystem curve={roadCurve} isNight={isNight} />
+            <LanternSystem curve={roadCurve} time={timeOfDay} />
             <DistantMountains />
             {/* Reduced count for performance */}
             <VegetationLayer count={60} minRange={20} maxRange={90} />

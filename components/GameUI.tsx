@@ -9,7 +9,7 @@ export const GameUI = () => {
   
   // State Subscriptions
   const showControls = useUIStore(state => state.showControls);
-  const isNight = useWorldStore(state => state.isNight);
+  const timeOfDay = useWorldStore(state => state.timeOfDay);
   const appState = useWorldStore(state => state.appState);
   const isGenerating = useWorldStore(state => state.isGenerating);
 
@@ -19,13 +19,17 @@ export const GameUI = () => {
       if (e.code === 'KeyH') {
         presenter.uiManager.toggleControls();
       }
-      if (e.code === 'KeyT') {
-        presenter.worldManager.toggleNight();
-      }
     };
     (window as any).addEventListener('keydown', handleKeyDown);
     return () => (window as any).removeEventListener('keydown', handleKeyDown);
   }, [presenter]);
+
+  // Format time for display (e.g., 14.5 -> 14:30)
+  const formatTime = (time: number) => {
+    const hours = Math.floor(time);
+    const minutes = Math.floor((time - hours) * 60);
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  };
 
   return (
     <div className="absolute top-0 left-0 w-full p-6 z-10 flex justify-between items-start pointer-events-none">
@@ -35,18 +39,27 @@ export const GameUI = () => {
             </h1>
             
             <div className="pointer-events-auto mt-2 flex flex-col gap-2 items-start">
+                <div className="flex flex-col gap-2 bg-black/40 p-3 rounded backdrop-blur-md border border-white/10">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="font-pixel text-[10px] text-white/90">TIME: {formatTime(timeOfDay)}</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        min="0" 
+                        max="24" 
+                        step="0.1"
+                        value={timeOfDay} 
+                        onChange={(e) => presenter.worldManager.setTime(parseFloat(e.target.value))}
+                        className="w-[150px] accent-yellow-400 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                    />
+                </div>
+
                 <div className="flex gap-2">
                     <button 
                         onClick={presenter.uiManager.toggleControls}
                         className="bg-black/40 hover:bg-black/60 text-white/70 font-pixel text-[10px] py-2 px-3 rounded backdrop-blur-md border border-white/10 transition-all"
                     >
                         {showControls ? '[-] CONTROLS' : '[H] CONTROLS'}
-                    </button>
-                    <button 
-                        onClick={presenter.worldManager.toggleNight}
-                        className="bg-black/40 hover:bg-black/60 text-white/70 font-pixel text-[10px] py-2 px-3 rounded backdrop-blur-md border border-white/10 transition-all"
-                    >
-                        {isNight ? '[T] SUN' : '[T] MOON'}
                     </button>
                 </div>
 
@@ -57,7 +70,6 @@ export const GameUI = () => {
                             <div className="flex justify-between border-b border-white/10 pb-1"><span>JUMP</span> <span className="text-yellow-400">SPACE</span></div>
                             <div className="flex justify-between border-b border-white/10 pb-1"><span>DESCEND</span> <span className="text-yellow-400">SHIFT</span></div>
                             <div className="flex justify-between border-b border-white/10 pb-1"><span>FLY</span> <span className="text-yellow-400">F</span></div>
-                            <div className="flex justify-between border-b border-white/10 pb-1"><span>TIME</span> <span className="text-yellow-400">T</span></div>
                             <div className="flex justify-between"><span>VIEW</span> <span className="text-yellow-400">DRAG</span></div>
                          </div>
                     </div>
