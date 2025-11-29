@@ -18,9 +18,10 @@ export const Player = () => {
   
   // 1. Source of Truth: Visual Position
   // We calculate this manually every frame.
-  const position = useRef(new THREE.Vector3(0, 10, 0)); 
+  // CHANGED: Start at y=0 (Ground) instead of y=10 (Air)
+  const position = useRef(new THREE.Vector3(0, 0, 0)); 
   const velocity = useRef(new THREE.Vector3(0, 0, 0));
-  const prevPosition = useRef(new THREE.Vector3(0, 10, 0));
+  const prevPosition = useRef(new THREE.Vector3(0, 0, 0));
   
   const propellerRef = useRef<THREE.Mesh>(null);
 
@@ -29,7 +30,8 @@ export const Player = () => {
   const [ref, api] = useSphere(() => ({
     mass: 1,
     type: 'Kinematic', 
-    position: [0, 10, 0],
+    // CHANGED: Start at y=0.5 (Center of 0.5 radius sphere means feet are at 0)
+    position: [0, 0.5, 0],
     args: [0.5],
   }));
 

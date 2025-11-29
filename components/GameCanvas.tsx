@@ -3,11 +3,9 @@ import { Canvas } from '@react-three/fiber';
 import { Stars } from '@react-three/drei';
 import { Physics } from '@react-three/cannon';
 import { useWorldStore } from '../stores/worldStore';
-import { 
-    OrganicEnvironment, 
-    PopulationSystem,
-    CloudLayer 
-} from './WorldElements';
+import { OrganicEnvironment } from './WorldElements';
+import { PopulationSystem } from './world/Villagers';
+import { CloudLayer } from './world/Sky';
 import { PhysicsVoxel } from './PhysicsVoxel';
 import { Player } from './Player';
 
