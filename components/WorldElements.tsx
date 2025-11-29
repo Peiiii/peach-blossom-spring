@@ -1,6 +1,7 @@
+
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
-import { COLORS } from '../constants';
+import { COLORS, getRiverPath, BRIDGE_Z_OFFSET } from '../constants';
 
 import { PhysicsGround, DistantMountains } from './world/Terrain';
 import { GalaxyWaterfall } from './world/Water';
@@ -9,39 +10,72 @@ import { VegetationLayer, FarmFields } from './world/Vegetation';
 import { PopulationSystem } from './world/Villagers';
 import { CloudLayer } from './world/Sky';
 
-// --- Helper Constants ---
-const generateCurve = (scale: number, seed: number) => {
-    const points = [];
-    for (let i = 0; i <= 10; i++) {
-        const x = (i - 5) * 20;
-        const z = Math.sin(i * 0.8 + seed) * 20 + Math.cos(i * 0.3) * 10;
-        points.push(new THREE.Vector3(x, 0, z));
-    }
-    return new THREE.CatmullRomCurve3(points);
-};
-
 export const OrganicEnvironment = React.memo(({ timeOfDay }: { timeOfDay: number }) => {
-    const riverCurve = useMemo(() => generateCurve(1, 0), []);
-    const roadCurve = useMemo(() => generateCurve(1, 2), []);
+    
+    // Generate River visual mesh matching the Physics function
+    const riverCurve = useMemo(() => {
+        const points = [];
+        for (let x = -60; x <= 60; x += 1) {
+            points.push(new THREE.Vector3(x, 0, getRiverPath(x)));
+        }
+        return new THREE.CatmullRomCurve3(points);
+    }, []);
 
-    const riverGeo = useMemo(() => new THREE.TubeGeometry(riverCurve, 64, 4, 8, false), [riverCurve]);
-    const roadGeo = useMemo(() => {
-        const points = roadCurve.getPoints(64).map(p => new THREE.Vector3(p.x + 5, 0.05, p.z + 5));
-        const curve = new THREE.CatmullRomCurve3(points);
-        return new THREE.TubeGeometry(curve, 64, 1.5, 3, false);
-    }, [roadCurve]);
+    // Road that crosses the bridge at x=0
+    const roadCurve = useMemo(() => {
+        const points = [];
+        // Start far left
+        points.push(new THREE.Vector3(-40, 0, BRIDGE_Z_OFFSET + 10));
+        points.push(new THREE.Vector3(-10, 0, BRIDGE_Z_OFFSET + 2));
+        // Cross Bridge
+        points.push(new THREE.Vector3(0, 0, BRIDGE_Z_OFFSET)); 
+        // Go right
+        points.push(new THREE.Vector3(10, 0, BRIDGE_Z_OFFSET - 2));
+        points.push(new THREE.Vector3(40, 0, BRIDGE_Z_OFFSET - 10));
+        return new THREE.CatmullRomCurve3(points);
+    }, []);
+
+    const riverGeo = useMemo(() => new THREE.TubeGeometry(riverCurve, 128, 3.5, 8, false), [riverCurve]);
+    const roadGeo = useMemo(() => new THREE.TubeGeometry(roadCurve, 64, 1.2, 3, false), [roadCurve]);
 
     return (
         <group>
+            {/* The ground terrain + bridge physics/visuals */}
             <PhysicsGround />
-            <GalaxyWaterfall />
-            {/* Flattened River: Scale Y to near-zero to make it a flat ribbon on the surface */}
-            <mesh geometry={riverGeo} position={[0, 0.02, 0]} scale={[1, 0.02, 1]} receiveShadow>
-                <meshStandardMaterial color={COLORS.WATER} roughness={0.1} metalness={0.1} opacity={0.9} transparent />
+            
+            {/* Visual waterfall at the end of the river */}
+            <GalaxyWaterfall position={[60, -2, getRiverPath(60)]} />
+
+            {/* River Water - Sits inside the trench (y = -1.2) */}
+            <mesh geometry={riverGeo} position={[0, -1.2, 0]} scale={[1, 0.1, 1]} receiveShadow>
+                <meshStandardMaterial color={COLORS.WATER} roughness={0.1} metalness={0.1} opacity={0.8} transparent />
             </mesh>
+            
+            {/* Road - Sits on top of ground (y=0.05), but we need to elevate it slightly over the bridge part visually? 
+                Actually the physics bridge is at 0.1, so road at 0.15 is fine. 
+                But the road curve is flat y=0.
+            */}
             <mesh geometry={roadGeo} position={[0, 0.05, 0]} scale={[1, 0.05, 1]} receiveShadow>
                 <meshStandardMaterial color={COLORS.DIRT} roughness={1} />
             </mesh>
+
+            {/* Bridge Rails Visuals */}
+            <group position={[0, 0.2, BRIDGE_Z_OFFSET]}>
+                 <mesh position={[0, 0.5, 2]}>
+                    <boxGeometry args={[4, 0.1, 0.2]} />
+                    <meshStandardMaterial color={COLORS.WOOD_LIGHT} />
+                 </mesh>
+                 <mesh position={[0, 0.5, -2]}>
+                    <boxGeometry args={[4, 0.1, 0.2]} />
+                    <meshStandardMaterial color={COLORS.WOOD_LIGHT} />
+                 </mesh>
+                 {/* Posts */}
+                 <mesh position={[-1.8, 0.25, 2]}><boxGeometry args={[0.2, 0.5, 0.2]} /><meshStandardMaterial color={COLORS.WOOD_DARK} /></mesh>
+                 <mesh position={[1.8, 0.25, 2]}><boxGeometry args={[0.2, 0.5, 0.2]} /><meshStandardMaterial color={COLORS.WOOD_DARK} /></mesh>
+                 <mesh position={[-1.8, 0.25, -2]}><boxGeometry args={[0.2, 0.5, 0.2]} /><meshStandardMaterial color={COLORS.WOOD_DARK} /></mesh>
+                 <mesh position={[1.8, 0.25, -2]}><boxGeometry args={[0.2, 0.5, 0.2]} /><meshStandardMaterial color={COLORS.WOOD_DARK} /></mesh>
+            </group>
+
             <LanternSystem curve={roadCurve} time={timeOfDay} />
             <DistantMountains />
             {/* Reduced count for performance */}

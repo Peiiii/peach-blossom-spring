@@ -18,7 +18,6 @@ export const Player = () => {
   
   // 1. Source of Truth: Visual Position
   // We calculate this manually every frame.
-  // CHANGED: Start at y=0 (Ground) instead of y=10 (Air)
   const position = useRef(new THREE.Vector3(0, 0, 0)); 
   const velocity = useRef(new THREE.Vector3(0, 0, 0));
   const prevPosition = useRef(new THREE.Vector3(0, 0, 0));
@@ -30,7 +29,6 @@ export const Player = () => {
   const [ref, api] = useSphere(() => ({
     mass: 1,
     type: 'Kinematic', 
-    // CHANGED: Start at y=0.5 (Center of 0.5 radius sphere means feet are at 0)
     position: [0, 0.5, 0],
     args: [0.5],
   }));
@@ -94,14 +92,42 @@ export const Player = () => {
         velocity.current.y -= GRAVITY * dt;
         position.current.y += velocity.current.y * dt;
 
-        // --- C. GROUND COLLISION (Hardcoded) ---
-        // Simple floor check at Y=0
-        if (position.current.y <= 0) {
-            position.current.y = 0;
+        // --- C. GROUND COLLISION ---
+        // We removed the hardcoded 'y < 0' check.
+        // Instead, we clamp at a much lower "Kill floor" so they don't fall forever if they glitch out.
+        // The Physics/Terrain system will prevent them falling through the actual ground (y=0) or river bed (y=-2).
+        if (position.current.y <= -20) {
+             position.current.y = 10; // Respawn in sky
+             velocity.current.y = 0;
+        }
+
+        // Basic floor snap for jump logic when very close to something solid? 
+        // Since we are Kinematic, we don't get 'collisions' automatically affecting position.
+        // However, standard Kinematic character controllers usually need Raycasts.
+        // For this simple demo, we will re-introduce a floor check relative to where the terrain SHOULD be.
+        // But since we want to fall in the river, we can't just say `if y < 0`.
+        
+        // HACK for Kinematic + Terrain holes:
+        // We will let the user 'fly' slightly if they walk off an edge, until they hit the -2 floor.
+        // Actually, Kinematic bodies pass through Static bodies unless we do raycasting.
+        // Changing to Dynamic would solve this, but Dynamic inputs feel floaty.
+        
+        // Let's implement a simple "Floor Height" function check based on the river.
+        // This simulates physics collision without expensive raycasting.
+        
+        const riverZ = Math.sin(position.current.x * 0.05) * 15 + Math.cos(position.current.x * 0.15) * 5; // Copy of logic from constants
+        const distToRiver = Math.abs(position.current.z - riverZ);
+        const RIVER_WIDTH = 6;
+        
+        let groundHeight = 0;
+        if (distToRiver < RIVER_WIDTH / 2) {
+            groundHeight = -2.0; // River Bed
+        }
+
+        if (position.current.y <= groundHeight) {
+            position.current.y = groundHeight;
             velocity.current.y = 0;
-            
-            // Jump is only allowed when grounded
-            if (jump) {
+             if (jump) {
                 velocity.current.y = JUMP_FORCE;
             }
         }
@@ -145,7 +171,7 @@ export const Player = () => {
             rotateSpeed={0.3} // Reduced rotation speed for smoother feel
             maxPolarAngle={Math.PI - 0.25} // Allow looking up significantly
             minDistance={2} 
-            maxDistance={5} // EXTREMELY REDUCED: Keeps camera very tight to player
+            maxDistance={8} // Increased max distance slightly for better view of scenery
         />
 
         {/* The Visual Character */}

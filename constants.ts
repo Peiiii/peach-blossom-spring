@@ -32,6 +32,15 @@ const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - 
 // High resolution block size (Increased to 0.8 to reduce total physics body count by ~75%)
 export const BLOCK_SCALE = 0.8;
 
+// Shared River Logic
+export const getRiverPath = (x: number) => {
+    // A wandering sine wave
+    return Math.sin(x * 0.05) * 15 + Math.cos(x * 0.15) * 5;
+};
+
+export const RIVER_WIDTH = 6;
+export const BRIDGE_Z_OFFSET = getRiverPath(0); // Where the bridge crosses x=0
+
 const createComplexHouse = (offsetX: number, offsetZ: number, rotation: number = 0): VoxelData[] => {
     const blocks: VoxelData[] = [];
     
@@ -136,11 +145,17 @@ export const GENERATE_VILLAGE_LAYOUT = (): VoxelShape => {
     const houseCount = 6; 
     for(let i=0; i<houseCount; i++) {
         const angle = (i / houseCount) * Math.PI * 2 + (Math.random() * 0.5);
-        const dist = 15 + Math.random() * 25; // Scattered 15-40 units away
+        const dist = 25 + Math.random() * 20; // Pushed further out to avoid river
         
         const x = Math.cos(angle) * dist;
         const z = Math.sin(angle) * dist;
         
+        // Ensure we don't spawn INSIDE the river
+        const riverZ = getRiverPath(x);
+        if (Math.abs(z - riverZ) < RIVER_WIDTH + 8) {
+            continue; // Skip if too close to river
+        }
+
         // Rotate house to face roughly center (0,0)
         const rot = angle + Math.PI / 2;
         
