@@ -19,11 +19,20 @@ export enum AppState {
   REBUILDING = 'REBUILDING' // Blocks flying back to new positions
 }
 
-// Global augmentation for React Three Fiber elements
-declare global {
+// Augment React's JSX namespace to support R3F elements
+declare module 'react' {
   namespace JSX {
     interface IntrinsicElements {
       // Catch-all for React Three Fiber elements (mesh, group, boxGeometry, etc.)
+      [elemName: string]: any;
+    }
+  }
+}
+
+// Global augmentation as fallback
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
       [elemName: string]: any;
     }
   }

@@ -36,55 +36,55 @@ const getSkyConfig = (time: number) => {
         skyColor.set(NIGHT);
         fogColor.set(NIGHT);
         moonIntensity = 1.0;
-        ambientIntensity = 0.2;
+        ambientIntensity = 0.3; 
         starOpacity = 1;
     } else if (time >= 5 && time < 7) {
         // Dawn (5-7)
         const t = (time - 5) / 2;
         skyColor = interpolateColor(NIGHT, DAWN, t);
         fogColor = interpolateColor(NIGHT, DAWN, t);
-        sunIntensity = t * 0.5;
+        sunIntensity = t * 0.8;
         moonIntensity = 1.0 - t;
-        ambientIntensity = 0.2 + t * 0.3;
+        ambientIntensity = 0.3 + t * 0.4;
         starOpacity = 1 - t;
     } else if (time >= 7 && time < 10) {
         // Morning (7-10) - Transition to Blue
         const t = (time - 7) / 3;
         skyColor = interpolateColor(DAWN, DAY, t);
         fogColor = interpolateColor(DAWN, DAY, t);
-        sunIntensity = 0.5 + t * 0.5;
-        ambientIntensity = 0.5 + t * 0.2;
+        sunIntensity = 0.8 + t * 1.7; // Ramps up to 2.5
+        ambientIntensity = 0.7 + t * 0.5; // Ramps up to 1.2
         starOpacity = 0;
     } else if (time >= 10 && time < 16) {
         // Full Day (10-16)
         skyColor.set(DAY);
         fogColor.set(DAY);
-        sunIntensity = 1.2;
-        ambientIntensity = 0.7; // Brightest
+        sunIntensity = 2.5; // Significantly brighter
+        ambientIntensity = 1.2; // High ambient for visibility
         starOpacity = 0;
     } else if (time >= 16 && time < 19) {
         // Dusk (16-19)
         const t = (time - 16) / 3;
         skyColor = interpolateColor(DAY, DUSK, t);
         fogColor = interpolateColor(DAY, DUSK, t);
-        sunIntensity = 1.2 - t * 0.7;
-        ambientIntensity = 0.7 - t * 0.3;
+        sunIntensity = 2.5 - t * 1.5; // Ramps down from 2.5 to 1.0
+        ambientIntensity = 1.2 - t * 0.6; // Ramps down from 1.2 to 0.6
         starOpacity = t * 0.3;
     } else if (time >= 19 && time < 21) {
         // Twilight (19-21)
         const t = (time - 19) / 2;
         skyColor = interpolateColor(DUSK, NIGHT, t);
         fogColor = interpolateColor(DUSK, NIGHT, t);
-        sunIntensity = 0.5 - t * 0.5;
+        sunIntensity = 1.0 - t * 1.0;
         moonIntensity = t * 1.0;
-        ambientIntensity = 0.4 - t * 0.2;
+        ambientIntensity = 0.6 - t * 0.3;
         starOpacity = 0.3 + t * 0.7;
     } else {
         // Night (21-24)
         skyColor.set(NIGHT);
         fogColor.set(NIGHT);
         moonIntensity = 1.0;
-        ambientIntensity = 0.2;
+        ambientIntensity = 0.3;
         starOpacity = 1;
     }
 
